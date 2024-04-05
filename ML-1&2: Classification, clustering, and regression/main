@@ -1,0 +1,188 @@
+%% This script accepts only numerical attributes.
+% Some of functions called for data analysis and verification of results
+% are not compatible with categorical/string data types.
+close all;
+clear all;
+clc;
+%% parameters
+pTest=0.2; % 20% test 80% train
+pVal=0;
+%% file names
+fileNameRawData ='HepatitisC.csv';
+fileNameFinalData = 'finalResults.mat';
+fileNameDiary = 'logCmdWindow.txt';
+diary fileNameDiary;
+%% load the dataset
+% Z=readmatrix(fileNameRawData); - only for numerical values
+Z=readtable(fileNameRawData);
+% extract X-Y - this step relies on the structure of the csv fie
+X=[Z(1:end, 3), Z(1:end, 5:end)];
+Y=Z(1:end, 2);
+% convert to arrays for compatibility with some functions used for data
+% analysis
+X=table2array(X);
+Y=table2array(Y);
+% Y categorical si X(:,2)
+[a, ~, C1] = unique(categorical(convertCharsToStrings(table2array(Z(1:end,4)))));
+X = [X(:,1), C1, X(:, 2:end)];
+[a, ~, C1] = unique(categorical(convertCharsToStrings(Y)));
+Y=C1;
+X(isnan(X))=0;
+%% create the trainign and the testing dataset
+[XTrain1, YTrain1, XTest1, YTest1] = buildDatasets(X, Y, 0.2, pVal); % 80% train -
+20% test
+[XTrain2, YTrain2, XTest2, YTest2] = buildDatasets(X, Y, 0.5, pVal); % 50% train -
+50% test
+tabulate(YTrain1)
+% we choose as x1 the class having the most samples in the dataset
+% we choose as x2 the class having the smallest number of samples
+% we choose x3 somewhere in between
+% replace i0 with xi, i = 1,2,3
+% randomly pick one class i0 and remove 50% of the samples in that class
+i0 = randi(length(unique(YTrain1)))
+id = find(YTrain1==i0);
+idsel = id(1:floor(size(id,1)/2), :);
+id2 = find(YTrain1~=i0);
+XTrain3 = [XTrain1(id2,:); XTrain1(idsel,:)];
+YTrain3 = [YTrain1(id2,:); YTrain1(idsel,:)];
+XTest3 = XTest1;
+YTest3 = YTest1;
+tabulate(YTrain1) %choose max count class, min count class, and a value in between
+% randomly pick one class i0 and remove 50% of the samples in that class
+i3 = …% the class having most data samples
+id = find(YTrain1==i3);
+idsel = id(1:floor(size(id,1)/2), :);
+id2 = find(YTrain1~=i3);
+XTrain6 = [XTrain1(id2,:); XTrain1(idsel,:)];
+YTrain6 = [YTrain1(id2,:); YTrain1(idsel,:)];
+XTest6 = XTest1;
+YTest6 = YTest1;
+% randomly select a column i1 and remove that column from X
+i1 = randi(size(XTrain1,2))
+XTrain4 = [XTrain1(:,1:i1-1), XTrain1(:,i1+1:end)];
+YTrain4 = YTrain1;
+XTest4 = [XTest1(:,1:i1-1), XTest1(:,i1+1:end)];
+YTest4 = YTest1;
+% randomly pick one column i2 and duplicate that column in X
+i2 = randi(size(XTrain1,2))
+XTrain5 = [XTrain1, XTrain1(:,i2)];
+YTrain5 = YTrain1;
+XTest5 = [XTest1, XTest1(:,i2)];
+YTest5 = YTest1;
+% % % % % %% check the distributon of training/testing data - plot in multiple
+sub-figures
+% % % % % mPlot=3; nPlot=4;
+% % % % % for k=1:size(X,2)
+% % % % % idx=rem(k,mPlot*nPlot);
+% % % % % if idx==0, idx=mPlot*nPlot; end
+% % % % % if idx==1, figure;end
+% % % % % subplot(mPlot,nPlot,idx)
+% % % % % plot(XTrain(:,k),'r')
+% % % % % hold on
+% % % % % plot(XTest(:,k),'.b')
+% % % % %
+% % % % % MTrain(k)=mean(XTrain(:,k));
+% % % % % STDTrain(k)=std(XTrain(:,k));
+% % % % % MAXTrain(k)=max(XTrain(:,k));
+% % % % % MINTrain(k)=min(XTrain(:,k));
+% % % % %
+% % % % % MTest(k)=mean(XTest(:,k));
+% % % % % STDTest(k)=std(XTest(:,k));
+% % % % % MAXTest(k)=max(XTest(:,k));
+% % % % % MINTest(k)=min(XTest(:,k));
+% % % % %
+% % % % %
+% % % % % end
+% % % % %
+% % % % % figure
+% % % % % subplot(2,2,1)
+% % % % % plot(MTrain,'m+'), hold on,
+% % % % % plot(MTest,'k+'), hold on,
+% % % % % title('mean');
+% % % % % subplot(2,2,2)
+% % % % % plot(STDTrain,'mo'), hold on,
+% % % % % plot(STDTest,'ko'), hold on,
+% % % % % title('std dev');
+% % % % % subplot(2,2,3)
+% % % % % plot(MAXTrain,'r-'), hold on,
+% % % % % plot(MAXTest,'b-'), hold on,
+% % % % % title('max');
+% % % % % subplot(2,2,4)
+% % % % % plot(MINTrain,'g-'), hold on,
+% % % % % plot(MINTest,'y-'), hold on,
+% % % % % title('min');
+% % % % % % %% save the datasets
+% % % % % % feval(@save, fileNameFinalData,'XTrain', 'YTrain', 'XTest', 'YTest');
+%% design the ML model
+% create decision trees models and train them on each dataset
+Mdl1 = fitctree(XTrain1,YTrain1);
+Mdl2 = fitctree(XTrain2,YTrain2);
+Mdl3 = fitctree(XTrain3,YTrain3);
+Mdl4 = fitctree(XTrain4,YTrain4);
+Mdl5 = fitctree(XTrain5,YTrain5);
+% obtain the responses for the training and testing datasets
+YMTrain1 = predict(Mdl1, XTrain1);
+YMTest1 = predict(Mdl1, XTest1);
+YMTrain2 = predict(Mdl2, XTrain2);
+YMTest2 = predict(Mdl2, XTest2);
+YMTrain3 = predict(Mdl3, XTrain3);
+YMTest3 = predict(Mdl3, XTest3);
+YMTrain4 = predict(Mdl4, XTrain4);
+YMTest4 = predict(Mdl4, XTest4);
+YMTrain5 = predict(Mdl5, XTrain5);
+YMTest5 = predict(Mdl5, XTest5);
+% % Mdl2 = fitlm(XTrain, YTrain);
+% % YMTrain = discretize(predict(Mdl2, XTrain), length(unique(Y)));
+% % YMTest = discretize(predict(Mdl2, XTest), length(unique(Y)));
+%% verify the results
+% plot the confusion matrices for training and testing
+% plotconfusion(YTrain,YMTrain)
+% plotconfusion(YTest,YMTest)
+% figure,confusionchart(YTrain,YMTrain)
+% figure,confusionchart(YTest,YMTest)
+% compute performance indicators for each model on the test dataset
+[Acc1, Rec1, Spec1, Prec1, F1sc1, classif_err1] = computePerfIndicators(Mdl1,
+XTest1, YTest1, YMTest1);
+[Acc2, Rec2, Spec2, Prec2, F1sc2, classif_err2] = computePerfIndicators(Mdl2,
+XTest2, YTest2, YMTest2);
+[Acc3, Rec3, Spec3, Prec3, F1sc3, classif_err3] = computePerfIndicators(Mdl3,
+XTest3, YTest3, YMTest3);
+[Acc4, Rec4, Spec4, Prec4, F1sc4, classif_err4] = computePerfIndicators(Mdl4,
+XTest4, YTest4, YMTest4);
+[Acc5, Rec5, Spec5, Prec5, F1sc5, classif_err5] = computePerfIndicators(Mdl5,
+XTest5, YTest5, YMTest5);
+indic = [mean(Acc1), mean(Rec1), mean(Spec1), mean(Prec1), mean(F1sc1);
+mean(Acc2), mean(Rec2), mean(Spec2), mean(Prec2), mean(F1sc2);
+mean(Acc3), mean(Rec3), mean(Spec3), mean(Prec3), mean(F1sc3);
+mean(Acc4), mean(Rec4), mean(Spec4), mean(Prec4), mean(F1sc4);
+mean(Acc5), mean(Rec5), mean(Spec5), mean(Prec5), mean(F1sc5)
+]
+err = [classif_err1; classif_err2; classif_err3; classif_err4; classif_err5 ]
+% other plots
+% …
+function [Acc, Rec, Spec, Prec, F1sc, classif_err] = computePerfIndicators(Mdl, X,
+Y, YM)
+labelClasses=unique(Y);
+for j=1:numel(labelClasses)
+idxTP=((YM == labelClasses(j)) & (Y==labelClasses(j)));
+idxTN=((YM ~= labelClasses(j)) & (Y~=labelClasses(j)));
+idxFP=((YM == labelClasses(j)) & (Y~=labelClasses(j)));
+idxFN=((YM ~= labelClasses(j)) & (Y==labelClasses(j)));
+TP=sum(idxTP);
+TN=sum(idxTN);
+FP=sum(idxFP);
+FN=sum(idxFN);
+Acc(j)=(TP+TN)/(TP+TN+FN+FP);
+Rec(j) = TP / (TP+FN);
+Spec(j) = TN/(FP+TN);
+Prec(j) = TP/(TP+FP);
+F1sc(j) = 2*TP/(2*TP + FN +FP);
+%+ other indicators, like recall, precision, F1-score
+end
+Acc(isnan(Acc)) = 0;
+Rec(isnan(Rec)) = 0;
+Prec(isnan(Prec)) = 0;
+Spec(isnan(Spec)) = 0;
+F1sc(isnan(F1sc)) = 0;
+classif_err = 100 - numel(find(YM-Y==0))/numel(Y)*100;
+end
